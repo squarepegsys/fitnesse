@@ -1,19 +1,21 @@
 package fitnesse.responders.search;
 
-import static fitnesse.responders.search.SearchFormResponder.*;
-import static fitnesse.wiki.PageData.*;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 import fitnesse.authentication.SecureOperation;
 import fitnesse.authentication.SecureReadOperation;
 import fitnesse.components.AttributeWikiPageFinder;
 import fitnesse.components.PageFinder;
 import fitnesse.http.Request;
 import fitnesse.wiki.PageType;
+import org.apache.velocity.VelocityContext;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import static fitnesse.responders.search.SearchFormResponder.SEARCH_ACTION_ATTRIBUTES;
+import static fitnesse.responders.search.SearchFormResponder.SPECIAL_ATTRIBUTES;
+import static fitnesse.wiki.PageData.*;
 
 public class ExecuteSearchPropertiesResponder extends ResultResponder {
 
@@ -22,9 +24,14 @@ public class ExecuteSearchPropertiesResponder extends ResultResponder {
   public static final String SECURITY = "Security";
   public static final String SPECIAL = "Special";
 
+   private VelocityContext velocityContext;  
+
+
   public SecureOperation getSecureOperation() {
     return new SecureReadOperation();
   }
+
+
 
   protected List<PageType> getPageTypesFromInput(Request request) {
     String requestedPageTypes = (String) request.getInput(PAGE_TYPE_ATTRIBUTE);
@@ -97,18 +104,21 @@ public class ExecuteSearchPropertiesResponder extends ResultResponder {
   @Override
   protected void startSearching() throws Exception {
     super.startSearching();
+
     List<PageType> pageTypes = getPageTypesFromInput(request);
     Map<String, Boolean> attributes = getAttributesFromInput(request);
     String suites = getSuitesFromInput(request);
 
     if (pageTypes == null && attributes.isEmpty() && suites == null) {
-      response.add("No search properties were specified.");
-      return;
+        response.add("No search properties were specified.");
+        return;
     }
 
     PageFinder finder = new AttributeWikiPageFinder(this, pageTypes,
-        attributes, suites);
+    attributes, suites);
     finder.search(page);
+   
+
   }
 
 }

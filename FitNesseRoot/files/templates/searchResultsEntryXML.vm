@@ -1,0 +1,11 @@
+<result>
+#if($result.getData().hasAttribute("Suite"))
+<type>Suite</type>
+#end
+#if($result.getData().hasAttribute("Test"))
+<type>Test</type>
+#end
+<path>$result.getPageCrawler().getFullPath($result).toString()</path>
+#set ( $tags = $result.getData().getAttribute("Suites") )
+<tags>#if ($tags && !$tags.equals("null"))$tags#end</tags>
+</result>

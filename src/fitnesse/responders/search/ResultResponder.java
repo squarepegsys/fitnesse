@@ -7,6 +7,7 @@ import fitnesse.authentication.SecureOperation;
 import fitnesse.authentication.SecureReadOperation;
 import fitnesse.authentication.SecureResponder;
 import fitnesse.components.SearchObserver;
+import fitnesse.http.Request;
 import fitnesse.responders.ChunkingResponder;
 import fitnesse.responders.templateUtilities.PageTitle;
 import fitnesse.wiki.PageCrawler;
@@ -21,16 +22,25 @@ public abstract class ResultResponder extends ChunkingResponder implements
   SearchObserver, SecureResponder {
   private int hits;
 
+
+    protected boolean formatIsXML(Request request) {
+    return (request.getInput("format") != null && request.getInput("format").toString().toLowerCase().equals("xml"));
+  }
+
   protected PageCrawler getPageCrawler() {
     return root.getPageCrawler();
   }
 
   protected void doSending() throws Exception {
-    response.add(createSearchResultsHeader());
+
+   response.add(createSearchResultsHeader());
+
 
     startSearching();
 
     response.add(createSearchResultsFooter());
+
+
     response.closeAll();
   }
 
@@ -41,6 +51,12 @@ public abstract class ResultResponder extends ChunkingResponder implements
 
     Template template = VelocityFactory.getVelocityEngine().getTemplate(
       "searchResultsFooter.vm");
+
+      if (formatIsXML(request)) {
+          template = VelocityFactory.getVelocityEngine().getTemplate(
+                  "searchResultsFooterXML.vm");
+      }
+      
     if (page == null)
       page = context.root.getPageCrawler().getPage(context.root, PathParser.parse("FrontPage"));
     velocityContext.put("hits", hits);
@@ -61,7 +77,12 @@ public abstract class ResultResponder extends ChunkingResponder implements
     StringWriter writer = new StringWriter();
 
     Template template = VelocityFactory.getVelocityEngine().getTemplate(
-      "searchResultsHeader.vm");
+              "searchResultsHeader.vm");
+
+    if (formatIsXML(request)) {
+        template = VelocityFactory.getVelocityEngine().getTemplate(
+                "searchResultsHeaderXML.vm");
+    }
 
     velocityContext.put("page_title", getTitle());
     velocityContext.put("pageTitle", new PageTitle(getTitle()) {
@@ -93,7 +114,13 @@ public abstract class ResultResponder extends ChunkingResponder implements
 
     StringWriter writer = new StringWriter();
 
-    Template template = VelocityFactory.getVelocityEngine().getTemplate("searchResultsEntry.vm");
+    Template template;
+
+    if (formatIsXML(request)){
+        template = VelocityFactory.getVelocityEngine().getTemplate("searchResultsEntryXML.vm");    
+    } else {
+        template = VelocityFactory.getVelocityEngine().getTemplate("searchResultsEntry.vm");
+    }
 
     velocityContext.put("resultsRow", getRow());
     velocityContext.put("result", result);

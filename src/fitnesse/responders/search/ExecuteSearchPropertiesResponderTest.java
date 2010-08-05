@@ -1,28 +1,33 @@
 package fitnesse.responders.search;
 
-import static fitnesse.wiki.PageData.*;
-import static fitnesse.wiki.PageType.*;
-import static fitnesse.responders.search.ExecuteSearchPropertiesResponder.*;
+import fitnesse.FitNesseContext;
+import fitnesse.http.MockRequest;
+import fitnesse.http.MockResponseSender;
+import fitnesse.http.Response;
+import fitnesse.testutil.FitNesseUtil;
+import fitnesse.wiki.*;
+import org.junit.Before;
+import org.junit.Test;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+import util.RegexTestCase;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.*;
-
-import util.RegexTestCase;
-import fitnesse.FitNesseContext;
-import fitnesse.testutil.FitNesseUtil;
-import fitnesse.http.MockRequest;
-import fitnesse.http.MockResponseSender;
-import fitnesse.http.Response;
-import fitnesse.wiki.InMemoryPage;
-import fitnesse.wiki.PageCrawler;
-import fitnesse.wiki.PageData;
-import fitnesse.wiki.PageType;
-import fitnesse.wiki.PathParser;
-import fitnesse.wiki.WikiPage;
-import fitnesse.wiki.WikiPageProperties;
+import static fitnesse.responders.search.ExecuteSearchPropertiesResponder.ACTION;
+import static fitnesse.responders.search.ExecuteSearchPropertiesResponder.SPECIAL;
+import static fitnesse.wiki.PageData.PAGE_TYPE_ATTRIBUTE;
+import static fitnesse.wiki.PageData.PropertyPRUNE;
+import static fitnesse.wiki.PageType.*;
 
 public class ExecuteSearchPropertiesResponderTest extends RegexTestCase {
   private WikiPage root;
@@ -65,6 +70,7 @@ public class ExecuteSearchPropertiesResponderTest extends RegexTestCase {
     request.addInput(PAGE_TYPE_ATTRIBUTE, TEST.toString());
 
     String content = invokeResponder(request);
+
     String[] titles = { "Page", TEST.toString(), "PageOne"};
 
     assertOutputHasRowWithLink(content, titles);
@@ -210,7 +216,7 @@ public class ExecuteSearchPropertiesResponderTest extends RegexTestCase {
     WikiPageProperties properties = properties1;
     properties.set(PropertyPRUNE, "true");
     page.commit(data);
-
+                                             
     MockRequest request = setupRequest();
     request.setResource("ObsoletePage");
     return request;
@@ -227,4 +233,53 @@ public class ExecuteSearchPropertiesResponderTest extends RegexTestCase {
     assertOutputHasRowWithLink(content, titles);
 
   }
+
+@Test
+ public void testXmlResponse() throws Exception{
+
+     MockRequest request = setupRequest();
+     request.addInput(PAGE_TYPE_ATTRIBUTE, TEST.toString());
+     request.addInput("format","xml");
+     request.addInput("nochunk","true");
+
+    String content = invokeResponder(request);
+
+    Document doc = parseXMLResult(content);
+
+    assertEquals(1,doc.getElementsByTagName("searchResults").getLength());
+
+    NodeList results = doc.getElementsByTagName("searchResults");
+    assertEquals(1,results.getLength());
+
+    for (int nodeIndex=0; nodeIndex<results.getLength(); nodeIndex++) {
+        Element result = (Element) results.item(nodeIndex);
+        
+        checkElementContent(result, "type", "Test");
+        checkElementContent(result, "path", "PageOne");
+        checkElementContent(result, "tags", "filter1,filter2");
+
+    }
+
+
+ }
+
+    private void checkElementContent(Element result, String tagName, String tagContent) {
+        Element tag = (Element) result.getElementsByTagName(tagName).item(0);
+        assertEquals(tagContent,tag.getTextContent());
+    }
+
+    private Document parseXMLResult(String content) throws ParserConfigurationException, SAXException, IOException {
+        int xmlStart = content.indexOf("<?xml");
+        int xmlEnd = content.indexOf("0",61);
+
+        if (xmlStart<0) {
+           throw new RuntimeException("Content has no XML Declaration!");
+        }
+
+        String xmlContent = content.substring(xmlStart,xmlEnd);
+
+        DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = builderFactory.newDocumentBuilder();
+        return  builder.parse(new ByteArrayInputStream(xmlContent.getBytes()));
+    }
 }
